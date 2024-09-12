@@ -96,49 +96,53 @@ exports.update = (req, res) => {
     return res.status(400).send({ message: "All fields are required." });
   }
 
-  // Valide o ano
   const currentYear = new Date().getFullYear();
   if (year < currentYear - 10 || year > currentYear) {
     return res.status(400).send({ message: "Car must be within the last 10 years." });
   }
 
-  // Valide itens únicos
   const uniqueItems = Array.from(new Set(items || []));
   if (items && uniqueItems.length !== items.length) {
     return res.status(400).send({ message: "Items must be unique." });
   }
 
-  // Crie o objeto de atualização
   const updateFields = { brand, model, year };
   if (items && items.length > 0) {
     updateFields.items = uniqueItems;
   }
 
-  // Verifique se o carro com os mesmos dados já existe
   Car.findByAttributes(brand, model, year, (err, existingCar) => {
     if (err) return res.status(500).send(err);
     if (existingCar) {
       return res.status(409).send({ message: "There is already a car with this data" });
     }
 
-    // Atualize o carro
     Car.update(id, updateFields, (err, result) => {
       if (err) return res.status(500).send(err);
       if (result.affectedRows === 0) {
         return res.status(404).send({ message: "Car not found" });
       }
-      res.status(204).send(); // Sem conteúdo
+      res.status(204).send(); 
     });
   });
 };
 
 exports.delete = (req, res) => {
-  const id = req.params.id;
+  const id = parseInt(req.params.id, 10);
 
-  Car.delete(id, (err, result) => {
+  if (isNaN(id)) {
+    return res.status(400).send({ message: "Invalid ID" });
+  }
+
+  Car.deleteItemsByCarId(id, (err) => {
     if (err) return res.status(500).send(err);
-    if (result.affectedRows === 0)
-      return res.status(404).send({ message: "Car not found" });
-    res.status(200).send({ message: "Car deleted successfully" });
+
+    Car.delete(id, (err, result) => {
+      if (err) return res.status(500).send(err);
+      if (result.affectedRows === 0) {
+        return res.status(404).send({ message: "Car not found" });
+      }
+      res.status(204).send();
+    });
   });
 };
