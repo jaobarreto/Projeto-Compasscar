@@ -16,13 +16,11 @@ exports.create = (req, res) => {
 
   const currentYear = new Date().getFullYear();
   if (year < currentYear - 10 || year > currentYear) {
-    return res
-      .status(400)
-      .send({
-        message: `Only cars from ${
-          currentYear - 10
-        } to ${currentYear} are allowed.`,
-      });
+    return res.status(400).send({
+      message: `Only cars from ${
+        currentYear - 10
+      } to ${currentYear} are allowed.`,
+    });
   }
 
   Car.findByBrandModelYear(brand, model, year, (err, existingCars) => {
@@ -54,9 +52,30 @@ exports.create = (req, res) => {
 };
 
 exports.getAll = (req, res) => {
-  Car.getAll((err, cars) => {
+  let page = parseInt(req.query.page) || 1;
+  let limit = parseInt(req.query.limit) || 5;
+
+  if (page < 1) page = 1;
+  if (limit < 1) limit = 5;
+
+  const offset = (page - 1) * limit;
+
+  Car.countAll((err, count) => {
     if (err) return res.status(500).send(err);
-    res.status(200).send(cars);
+
+    if (count === 0) return res.status(204).send();
+
+    Car.getAllPaginated(limit, offset, (err, cars) => {
+      if (err) return res.status(500).send(err);
+
+      const pages = Math.ceil(count / limit);
+
+      res.status(200).json({
+        count: count,
+        pages: pages,
+        data: cars,
+      });
+    });
   });
 };
 
@@ -71,17 +90,45 @@ exports.getOne = (req, res) => {
 
 exports.update = (req, res) => {
   const id = req.params.id;
-  const { brand, model, year } = req.body;
+  const { brand, model, year, items } = req.body;
 
   if (!brand || !model || !year) {
     return res.status(400).send({ message: "All fields are required." });
   }
 
-  Car.update(id, { brand, model, year }, (err, result) => {
+  // Valide o ano
+  const currentYear = new Date().getFullYear();
+  if (year < currentYear - 10 || year > currentYear) {
+    return res.status(400).send({ message: "Car must be within the last 10 years." });
+  }
+
+  // Valide itens únicos
+  const uniqueItems = Array.from(new Set(items || []));
+  if (items && uniqueItems.length !== items.length) {
+    return res.status(400).send({ message: "Items must be unique." });
+  }
+
+  // Crie o objeto de atualização
+  const updateFields = { brand, model, year };
+  if (items && items.length > 0) {
+    updateFields.items = uniqueItems;
+  }
+
+  // Verifique se o carro com os mesmos dados já existe
+  Car.findByAttributes(brand, model, year, (err, existingCar) => {
     if (err) return res.status(500).send(err);
-    if (result.affectedRows === 0)
-      return res.status(404).send({ message: "Car not found" });
-    res.status(200).send({ message: "Car updated successfully" });
+    if (existingCar) {
+      return res.status(409).send({ message: "There is already a car with this data" });
+    }
+
+    // Atualize o carro
+    Car.update(id, updateFields, (err, result) => {
+      if (err) return res.status(500).send(err);
+      if (result.affectedRows === 0) {
+        return res.status(404).send({ message: "Car not found" });
+      }
+      res.status(204).send(); // Sem conteúdo
+    });
   });
 };
 
