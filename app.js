@@ -7,8 +7,8 @@ const app = express();
 
 app.use(bodyParser.json());
 
-app.use("/api/cars", carsRoutes);
-app.use("/api/carItems", carItemsRoutes);
+app.use("/api/v1/cars", carsRoutes);
+app.use("/api/v1/carItems", carItemsRoutes);
 
 const port = process.env.port || 4000;
 

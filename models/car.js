@@ -47,7 +47,7 @@ exports.findByAttributes = (brand, model, year, callback) => {
   const query = "SELECT * FROM cars WHERE brand = ? AND model = ? AND year = ?";
   db.query(query, [brand, model, year], (err, results) => {
     if (err) return callback(err);
-    callback(null, results[0]); // Retorna o primeiro resultado encontrado
+    callback(null, results[0]); 
   });
 };
 

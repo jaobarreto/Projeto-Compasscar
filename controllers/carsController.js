@@ -26,7 +26,7 @@ exports.create = (req, res) => {
   Car.findByBrandModelYear(brand, model, year, (err, existingCars) => {
     if (err) return res.status(500).send(err);
     if (existingCars.length) {
-      return res.status(400).send({ message: "Car already exists." });
+      return res.status(409).send({ message: "There is already a car with this data." });
     }
 
     Car.create({ brand, model, year }, (err, result) => {
